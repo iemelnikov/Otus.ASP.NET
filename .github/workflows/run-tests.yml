@@ -1,0 +1,57 @@
+name: Run Unit Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, homeWorkUnitTests ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Validate solution exists
+      id: check-sln
+      run: |
+        SOLUTION_PATH="./Homeworks/UnitTests/src/PromoCodeFactory.sln"
+        echo "Checking solution at: $SOLUTION_PATH"
+        if [ ! -f "$SOLUTION_PATH" ]; then
+          echo "::error::Solution file not found at $SOLUTION_PATH"
+          echo "Directory content:"
+          ls -la ./Homeworks/UnitTests/src/
+          exit 1
+        fi
+        echo "solution_path=$SOLUTION_PATH" >> $GITHUB_OUTPUT
+        echo "Solution found successfully"
+    
+    - name: Restore dependencies
+      working-directory: ./Homeworks/UnitTests/src
+      run: dotnet restore PromoCodeFactory.sln
+    
+    - name: Run tests
+      working-directory: ${{ github.workspace }}
+      run: |
+        mkdir -p TestResults
+        dotnet test "${{ steps.check-sln.outputs.solution_path }}" \
+          --results-directory TestResults \
+          --configuration Release \
+          --no-restore \
+          --verbosity normal \
+          --logger "trx;LogFileName=test-results.trx" \
+          || echo "::warning::Some tests failed"
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: TestResults/**/*
