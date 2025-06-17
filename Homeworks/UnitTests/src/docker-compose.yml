@@ -1,0 +1,51 @@
+﻿services:
+  #Api
+  promocodefactory.webhost:  # Название сервиса
+    image: ${DOCKER_REGISTRY-}promocodefactorywebhost  # Имя образа
+    build:
+      context: .
+      dockerfile: PromoCodeFactory.WebHost/Dockerfile
+    ports:
+      - "5050:8080"  # хост:5050 → контейнер:8080
+    environment:
+      - "ConnectionStrings:PromoCodeFactoryDb=Host=pg_promocode_factory_db;Database=promocode_factory_db;Username=postgres;Password=5PtweLtGOQXb4;Port=5432"
+    depends_on:
+      - pg_promocode_factory_db # Ждём запуска PostgreSQL
+    networks:
+      - backend-net
+
+  #Db
+  pg_promocode_factory_db:
+    image: "postgres:17.5"
+    restart: unless-stopped
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=promocode_factory_db
+      - POSTGRES_PASSWORD=5PtweLtGOQXb4
+    volumes: # persist data even if container shuts down
+      - postgres_data:/var/lib/postgresql/data/
+    networks:
+      - backend-net
+ 
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com  # Логин для pgAdmin
+      PGADMIN_DEFAULT_PASSWORD: admin           # Пароль для pgAdmin
+    ports:
+      - "5082:80"  # Доступ к pgAdmin через http://localhost:5082
+    depends_on:
+      - pg_promocode_factory_db  # Ждём запуска PostgreSQL
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin  # Сохраняем данные pgAdmin
+    networks:
+      - backend-net 
+
+volumes: # persist data even if container shuts down
+  postgres_data:
+  pgadmin_data:
+
+networks:
+  backend-net:

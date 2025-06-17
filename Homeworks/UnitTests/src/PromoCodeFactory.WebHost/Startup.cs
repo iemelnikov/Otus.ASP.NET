@@ -1,20 +1,21 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Castle.Core.Configuration;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using PromoCodeFactory.Core.Abstractions.Repositories;
 using PromoCodeFactory.Core.Domain.Administration;
 using PromoCodeFactory.DataAccess;
 using PromoCodeFactory.DataAccess.Data;
 using PromoCodeFactory.DataAccess.Repositories;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using IConfiguration = Microsoft.Extensions.Configuration.IConfiguration;
 
 namespace PromoCodeFactory.WebHost
@@ -38,8 +39,8 @@ namespace PromoCodeFactory.WebHost
             services.AddScoped<IDbInitializer, EfDbInitializer>();
             services.AddDbContext<DataContext>(x =>
             {
-                x.UseSqlite("Filename=PromoCodeFactoryDb.sqlite");
-                //x.UseNpgsql(Configuration.GetConnectionString("PromoCodeFactoryDb"));
+                //x.UseSqlite("Filename=PromoCodeFactoryDb.sqlite");
+                x.UseNpgsql(Configuration.GetConnectionString("PromoCodeFactoryDb"));
                 x.UseSnakeCaseNamingConvention();
                 x.UseLazyLoadingProxies();
             });
@@ -61,6 +62,16 @@ namespace PromoCodeFactory.WebHost
             else
             {
                 app.UseHsts();
+            }
+
+            // Автоматическое применение миграций
+            using (var scope = app.ApplicationServices.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
+                if (dbContext.Database.GetPendingMigrations().Any())
+                {
+                    dbContext.Database.Migrate(); // Применяет все pending миграции
+                }
             }
 
             app.UseOpenApi();
