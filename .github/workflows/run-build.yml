@@ -1,0 +1,45 @@
+name: Run Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, homeWorkDockerCompose ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      SOLUTION_PATH: Homeworks/UnitTests/src/PromoCodeFactory.sln
+      DOCKER_COMPOSE_PATH: Homeworks/UnitTests/src/docker-compose.yml
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.SOLUTION_PATH }}
+
+      - name: Build solution
+        run: dotnet build ${{ env.SOLUTION_PATH }} -c Release --no-restore
+
+      - name: Archive build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: Homeworks/UnitTests/src/**/bin/Release
